@@ -1,0 +1,230 @@
+// ==========================================
+// 1. QUẢN TRỊ HỆ THỐNG & NGƯỜI DÙNG
+// ==========================================
+
+Table users {
+  id serial [pk, increment]
+  username varchar [unique, not null]
+  password_hash varchar [not null]
+  full_name varchar
+  email varchar
+  phone varchar
+  avatar_url text
+  role varchar [note: "'admin', 'teacher', 'student'"]
+  status varchar [default: 'active', note: "'active', 'inactive'"]
+  created_at timestamp [default: `now()`]
+}
+
+// ==========================================
+// 2. QUẢN LÝ TRƯỜNG HỌC, LỚP, HỌC SINH
+// ==========================================
+
+Table schools {
+  id serial [pk, increment]
+  name varchar [not null]
+  address text
+  phone varchar
+}
+
+Table classes {
+  id serial [pk, increment]
+  school_id int [ref: > schools.id]
+  class_name varchar [not null] // VD: 10A1
+  subject_name varchar // Môn chuyên (nếu có)
+  start_year int
+  end_year int
+  status varchar [default: 'active']
+  created_at timestamp [default: `now()`]
+}
+
+Table students {
+  id serial [pk, increment]
+  class_id int [ref: > classes.id]
+  full_name varchar [not null]
+  date_of_birth date
+  email varchar
+  phone_number varchar
+  status varchar [default: 'active']
+  created_at timestamp [default: `now()`]
+}
+
+// ==========================================
+// 3. CÂY KIẾN THỨC (KNOWLEDGE TREE)
+// ==========================================
+
+Table grade_levels {
+  id serial [pk, increment]
+  name varchar [not null] // VD: Khối 10
+  value int // VD: 10
+}
+
+Table subjects {
+  id serial [pk, increment]
+  grade_level_id int [ref: > grade_levels.id]
+  name varchar [not null] // VD: Toán
+}
+
+Table books {
+  id serial [pk, increment]
+  subject_id int [ref: > subjects.id]
+  name varchar [not null] // VD: Toán 10 - Kết nối tri thức
+}
+
+Table chapters {
+  id serial [pk, increment]
+  book_id int [ref: > books.id]
+  name varchar [not null] // VD: Chương 1: Mệnh đề
+  order_number int
+}
+
+Table lessons {
+  id serial [pk, increment]
+  chapter_id int [ref: > chapters.id]
+  name varchar [not null] // VD: Bài 1: Mệnh đề
+  description text
+  order_number int
+}
+
+Table knowledge_units {
+  id serial [pk, increment]
+  lesson_id int [ref: > lessons.id]
+  content text [not null] // VD: Hiểu khái niệm mệnh đề
+  type varchar [note: "'Concept', 'Skill'"]
+}
+
+// ==========================================
+// 4. NGÂN HÀNG CÂU HỎI (QUESTION BANK)
+// ==========================================
+
+Table questions {
+  id serial [pk, increment]
+  // Liên kết kiến thức (có thể null nếu chưa phân loại chi tiết)
+  knowledge_unit_id int [ref: > knowledge_units.id, null] 
+  lesson_id int [ref: > lessons.id, null]
+  
+  content text [not null] // Nội dung câu hỏi (HTML/LaTeX)
+  type varchar [not null, note: "'MultipleChoice', 'Essay', 'TrueFalse', 'FillBlank'"]
+  level varchar [note: "'Recognition', 'Understanding', 'Application', 'HighApplication'"]
+  
+  default_score float [default: 1.0]
+  solution_guide text // Hướng dẫn giải
+  
+  created_by int [ref: > users.id]
+  created_at timestamp [default: `now()`]
+}
+
+// Bảng lưu các lựa chọn đáp án (cho trắc nghiệm)
+Table question_options {
+  id serial [pk, increment]
+  question_id int [ref: > questions.id, on delete: cascade]
+  content text [not null]
+  is_correct boolean [default: false]
+  order_index int
+}
+
+// Bảng lưu ảnh đính kèm trong câu hỏi (để crop/hiển thị)
+Table question_images {
+  id serial [pk, increment]
+  question_id int [ref: > questions.id, on delete: cascade]
+  image_key varchar // Key dùng trong template {{key}}
+  image_url text // URL hoặc Base64
+}
+
+// ==========================================
+// 5. QUẢN LÝ ĐỀ THI & GIAO BÀI (EXAMS)
+// ==========================================
+
+Table exam_batches {
+  id serial [pk, increment]
+  name varchar [not null] // Tên đợt thi/Đề thi
+  creator_id int [ref: > users.id]
+  subject_id int [ref: > subjects.id, null]
+  
+  duration_minutes int
+  total_points float
+  
+  start_time timestamp
+  end_time timestamp
+  
+  status varchar [default: 'draft', note: "'draft', 'published', 'closed'"]
+  
+  // Cấu hình hiển thị kết quả
+  allow_view_score boolean [default: false]
+  allow_view_solution boolean [default: false]
+  min_score_to_view float
+  
+  created_at timestamp [default: `now()`]
+}
+
+// ==========================================
+// 6. MA TRẬN ĐỀ THI (EXAM MATRICES)
+// Lưu cấu hình ma trận trực tiếp cho từng đợt thi
+// ==========================================
+
+Table exam_matrices {
+  id serial [pk, increment]
+  
+  // Liên kết trực tiếp: 1 Batch có nhiều dòng cấu hình Matrix
+  exam_batch_id int [ref: > exam_batches.id, on delete: cascade]
+  
+  // Phạm vi kiến thức (Chỉ 1 trong 3 cột này có giá trị)
+  chapter_id int [ref: > chapters.id, null]
+  lesson_id int [ref: > lessons.id, null]
+  knowledge_unit_id int [ref: > knowledge_units.id, null]
+  
+  // Số lượng câu hỏi theo mức độ nhận thức
+  level_recognition int [default: 0]    // Nhận biết
+  level_understanding int [default: 0]  // Thông hiểu
+  level_application int [default: 0]    // Vận dụng
+  level_high_application int [default: 0] // Vận dụng cao
+  
+  // Số lượng câu hỏi theo loại hình
+  type_multiple_choice int [default: 0] // Trắc nghiệm
+  type_essay int [default: 0]           // Tự luận
+  type_true_false int [default: 0]      // Đúng/Sai
+  type_fill_blank int [default: 0]      // Điền khuyết
+  
+  total_points float [default: 0.0]
+}
+
+// ==========================================
+// 7. LIÊN KẾT ĐỀ THI (ASSIGNMENTS & QUESTIONS)
+// ==========================================
+
+// Bảng liên kết: Giao đề thi cho các lớp
+Table exam_class_assignments {
+  id serial [pk, increment]
+  exam_batch_id int [ref: > exam_batches.id, on delete: cascade]
+  class_id int [ref: > classes.id]
+  assigned_at timestamp [default: `now()`]
+}
+
+// Bảng liên kết: Đề thi gồm những câu hỏi nào (Sinh ra từ ma trận hoặc chọn tay)
+Table exam_questions {
+  id serial [pk, increment]
+  exam_batch_id int [ref: > exam_batches.id, on delete: cascade]
+  question_id int [ref: > questions.id]
+  
+  score_in_exam float // Điểm số trong đề này (có thể khác điểm mặc định)
+  order_index int // Thứ tự câu hỏi trong đề
+}
+
+// ==========================================
+// 8. LỊCH DẠY (SCHEDULE)
+// ==========================================
+
+Table schedules {
+  id serial [pk, increment]
+  class_id int [ref: > classes.id]
+  lesson_id int [ref: > lessons.id, null] // Bài học dự kiến dạy
+  teacher_id int [ref: > users.id]
+  
+  date date [not null]
+  week_day int [note: "2=Thứ Hai, ... 8=CN"]
+  
+  start_period int // Tiết bắt đầu (1-12)
+  end_period int   // Tiết kết thúc
+  
+  note text
+  created_at timestamp [default: `now()`]
+}
