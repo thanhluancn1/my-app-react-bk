@@ -1,6 +1,7 @@
 # app/api/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import timedelta
+from fastapi.security import OAuth2PasswordRequestForm
 
 # Import các thành phần cần thiết
 from app.core.security import verify_password, create_access_token, get_password_hash
@@ -11,13 +12,17 @@ router = APIRouter()
 
 # --- 1. API Login ---
 @router.post("/login", response_model=TokenResponse)
-def login(login_data: LoginRequest, cursor = Depends(get_db_cursor)):
+def login(
+    # 2. Thay LoginRequest bằng OAuth2PasswordRequestForm
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    cursor = Depends(get_db_cursor)
+):
     """
-    API đăng nhập: Nhận username/password -> Trả về JWT Token
+    API đăng nhập: Nhận username/password (Form Data) -> Trả về JWT Token
     """
-    # A. Tìm user trong Database
+    # A. Tìm user (Dùng form_data.username thay vì login_data.username)
     query = "SELECT * FROM edu.users WHERE username = %s"
-    cursor.execute(query, (login_data.username,))
+    cursor.execute(query, (form_data.username,))
     user = cursor.fetchone()
 
     # B. Kiểm tra User tồn tại
@@ -27,28 +32,27 @@ def login(login_data: LoginRequest, cursor = Depends(get_db_cursor)):
             detail="Tài khoản không tồn tại hoặc sai tên đăng nhập"
         )
 
-    # C. Kiểm tra Mật khẩu (Hash)
-    if not verify_password(login_data.password, user['password_hash']):
+    # C. Kiểm tra Mật khẩu (Dùng form_data.password)
+    if not verify_password(form_data.password, user['password_hash']):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mật khẩu không chính xác"
         )
 
-    # D. Kiểm tra Trạng thái tài khoản
+    # D. Kiểm tra Trạng thái
     if user['status'] != 'Hoạt động':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tài khoản này đã bị khóa hoặc chưa kích hoạt"
         )
 
-    # E. Thành công -> Tạo Token
-    access_token_expires = timedelta(minutes=60 * 24) # 24h
+    # E. Tạo Token
+    access_token_expires = timedelta(minutes=60 * 24)
     access_token = create_access_token(
         subject=user['username'],
         expires_delta=access_token_expires
     )
     
-    # Xóa field mật khẩu trước khi trả về
     del user['password_hash']
 
     return {
@@ -64,7 +68,7 @@ def create_user(user_in: UserCreate, cursor = Depends(get_db_cursor)):
     Tạo người dùng mới (Giáo viên, Học sinh, Admin)
     """
     # A. Kiểm tra trùng lặp Username
-    check_query = "SELECT id FROM edu.users WHERE username = %s"
+    check_query = "SELECT user_id FROM edu.users WHERE username = %s"
     cursor.execute(check_query, (user_in.username,))
     if cursor.fetchone():
         raise HTTPException(
@@ -80,7 +84,7 @@ def create_user(user_in: UserCreate, cursor = Depends(get_db_cursor)):
         INSERT INTO edu.users 
         (username, password_hash, full_name, email, phone, avatar_url, role, status)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id, username, full_name, email, phone, avatar_url, role, status, created_at;
+        RETURNING user_id, username, full_name, email, phone, avatar_url, role, status, created_at;
     """
     
     try:

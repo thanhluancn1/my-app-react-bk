@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api import school, auth  # <--- Import thêm auth
 from app.api import school, auth, knowledge
+from app.api import school, auth, knowledge, schedule
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -29,20 +30,11 @@ def read_root():
 # --- Đăng ký các Router ---
 
 # 1. Router Authentication (Login, Register)
-app.include_router(
-    auth.router, 
-    prefix=settings.API_V1_STR, 
-    tags=["Auth"]
-)
-
+app.include_router(auth.router, prefix=settings.API_V1_STR, tags=["Auth"])
 # 2. Router School (Classes, Students)
-app.include_router(
-    school.router, 
-    prefix=settings.API_V1_STR, 
-    tags=["School"]
-)
-
+app.include_router(school.router, prefix=settings.API_V1_STR, tags=["School"])
 app.include_router(knowledge.router, prefix=settings.API_V1_STR, tags=["Knowledge"])
+app.include_router(schedule.router, prefix=settings.API_V1_STR, tags=["Schedule"])
 
 if __name__ == "__main__":
     import uvicorn

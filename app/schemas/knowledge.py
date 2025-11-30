@@ -2,11 +2,10 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 
 # ==========================================
-# 1. SCHEMAS TẠO MỚI & CẬP NHẬT (Explicit)
-# Dùng cho API POST/PUT riêng biệt
+# 1. INPUT SCHEMAS (Create & Update)
 # ==========================================
 
-# --- GRADE (Khối) ---
+# --- GRADE ---
 class GradeCreate(BaseModel):
     grade_level_name: str
     value: int
@@ -18,7 +17,7 @@ class GradeUpdate(BaseModel):
 class GradeResponse(GradeCreate):
     grade_level_id: int
 
-# --- SUBJECT (Môn học) ---
+# --- SUBJECT ---
 class SubjectCreate(BaseModel):
     subject_name: str
     grade_level_id: int
@@ -30,7 +29,7 @@ class SubjectUpdate(BaseModel):
 class SubjectResponse(SubjectCreate):
     subject_id: int
 
-# --- BOOK (Sách) ---
+# --- BOOK ---
 class BookCreate(BaseModel):
     book_name: str
     subject_id: int
@@ -42,7 +41,7 @@ class BookUpdate(BaseModel):
 class BookResponse(BookCreate):
     book_id: int
 
-# --- CHAPTER (Chương) ---
+# --- CHAPTER ---
 class ChapterCreate(BaseModel):
     chapter_name: str
     book_id: int
@@ -55,7 +54,7 @@ class ChapterUpdate(BaseModel):
 class ChapterResponse(ChapterCreate):
     chapter_id: int
 
-# --- LESSON (Bài học) ---
+# --- LESSON ---
 class LessonCreate(BaseModel):
     lesson_name: str
     chapter_id: int
@@ -74,18 +73,18 @@ class LessonResponse(LessonCreate):
 class KnowledgeUnitCreate(BaseModel):
     content: str
     lesson_id: int
-    knowledge_type: Literal['Concept', 'Skill'] # Validation cứng
+    # SỬA Ở ĐÂY: Đổi 'Concept', 'Skill' thành tiếng Việt
+    knowledge_type: Literal['Khái niệm', 'Kỹ năng'] = Field(..., description="Loại: Khái niệm hoặc Kỹ năng")
 
 class KnowledgeUnitUpdate(BaseModel):
     content: Optional[str] = None
-    knowledge_type: Optional[Literal['Concept', 'Skill']] = None
+    # SỬA Ở ĐÂY:
+    knowledge_type: Optional[Literal['Khái niệm', 'Kỹ năng']] = None
 
 class KnowledgeUnitResponse(KnowledgeUnitCreate):
     knowledge_unit_id: int
-
 # ==========================================
 # 2. NESTED OUTPUT SCHEMAS (Cho API Get Tree)
-# Giữ nguyên cấu trúc lồng nhau để hiển thị cây thư mục
 # ==========================================
 
 class KnowledgeUnitDTO(BaseModel):

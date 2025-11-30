@@ -62,50 +62,44 @@ CREATE TABLE edu.students (
 -- 3. CÂY KIẾN THỨC (KNOWLEDGE TREE)
 -- ==========================================
 
-DROP TABLE IF EXISTS edu.grade_levels CASCADE;
 CREATE TABLE edu.grade_levels (
-  grade_level_id SERIAL PRIMARY KEY,
-  grade_level_name VARCHAR(100) NOT NULL, -- Đổi từ name
-  value INT
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL, -- VD: 'Khối 10'
+  value INT                   -- VD: 10
 );
 
-DROP TABLE IF EXISTS edu.subjects CASCADE;
 CREATE TABLE edu.subjects (
-  subject_id SERIAL PRIMARY KEY,
-  grade_level_id INT,
-  subject_name VARCHAR(100) NOT NULL -- Đổi từ name
+  id SERIAL PRIMARY KEY,
+  grade_level_id INT REFERENCES edu.grade_levels(id),
+  name VARCHAR(100) NOT NULL -- VD: 'Toán'
 );
 
-DROP TABLE IF EXISTS edu.books CASCADE;
 CREATE TABLE edu.books (
-  book_id SERIAL PRIMARY KEY,
-  subject_id INT,
-  book_name VARCHAR(255) NOT NULL -- Đổi từ name
+  id SERIAL PRIMARY KEY,
+  subject_id INT REFERENCES edu.subjects(id),
+  name VARCHAR(255) NOT NULL -- VD: 'Kết nối tri thức'
 );
 
-DROP TABLE IF EXISTS edu.chapters CASCADE;
 CREATE TABLE edu.chapters (
-  chapter_id SERIAL PRIMARY KEY,
-  book_id INT,
-  chapter_name VARCHAR(255) NOT NULL, -- Đổi từ name
+  id SERIAL PRIMARY KEY,
+  book_id INT REFERENCES edu.books(id),
+  name VARCHAR(255) NOT NULL, -- VD: 'Chương 1: Mệnh đề'
   order_number INT
 );
 
-DROP TABLE IF EXISTS edu.lessons CASCADE;
 CREATE TABLE edu.lessons (
-  lesson_id SERIAL PRIMARY KEY,
-  chapter_id INT,
-  lesson_name VARCHAR(255) NOT NULL, -- Đổi từ name
+  id SERIAL PRIMARY KEY,
+  chapter_id INT REFERENCES edu.chapters(id),
+  name VARCHAR(255) NOT NULL, -- VD: 'Bài 1: Mệnh đề'
   description TEXT,
   order_number INT
 );
 
-DROP TABLE IF EXISTS edu.knowledge_units CASCADE;
 CREATE TABLE edu.knowledge_units (
-  knowledge_unit_id SERIAL PRIMARY KEY,
-  lesson_id INT,
-  content TEXT NOT NULL,
-  knowledge_type VARCHAR(50) -- Đổi từ type -> knowledge_type
+  id SERIAL PRIMARY KEY,
+  lesson_id INT REFERENCES edu.lessons(id),
+  content TEXT NOT NULL,      -- VD: 'Hiểu khái niệm mệnh đề'
+  type VARCHAR(50)            -- VD: 'Khái niệm', 'Kỹ năng'
 );
 
 -- ==========================================

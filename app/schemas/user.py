@@ -15,7 +15,7 @@ class UserCreate(BaseModel):
 
 # Dữ liệu người dùng trả về (Output)
 class UserResponse(BaseModel):
-    id: int
+    user_id: int
     username: str
     full_name: Optional[str] = None
     email: Optional[str] = None

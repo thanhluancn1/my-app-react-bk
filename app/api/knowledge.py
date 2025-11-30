@@ -283,29 +283,76 @@ def delete_lesson(id: int, user=Depends(get_current_user), cursor=Depends(get_db
 # ============================================================
 # 7. GROUP CRUD: KNOWLEDGE UNITS (ĐƠN VỊ KIẾN THỨC)
 # ============================================================
+
 @router.post("/knowledge-units", response_model=KnowledgeUnitResponse, status_code=201)
-def create_unit(data: KnowledgeUnitCreate, user=Depends(get_current_user), cursor=Depends(get_db_cursor)):
-    check_is_admin(user)
-    cursor.execute(
-        "INSERT INTO edu.knowledge_units (content, lesson_id, knowledge_type) VALUES (%s, %s, %s) RETURNING *",
-        (data.content, data.lesson_id, data.knowledge_type)
-    )
-    return cursor.fetchone()
+def create_unit(
+    data: KnowledgeUnitCreate, 
+    user: dict = Depends(get_current_user), # Đã import từ app.api.deps
+    cursor = Depends(get_db_cursor)         # Đã import từ app.db.session
+):
+    """
+    Tạo mới một Knowledge Unit
+    """
+    check_is_admin(user) # Chỉ Admin mới được tạo
+    
+    query = """
+        INSERT INTO edu.knowledge_units (content, lesson_id, knowledge_type) 
+        VALUES (%s, %s, %s) 
+        RETURNING knowledge_unit_id, content, lesson_id, knowledge_type
+    """
+    try:
+        cursor.execute(query, (data.content, data.lesson_id, data.knowledge_type))
+        return cursor.fetchone()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi tạo Unit: {str(e)}")
 
 @router.put("/knowledge-units/{id}", response_model=KnowledgeUnitResponse)
-def update_unit(id: int, data: KnowledgeUnitUpdate, user=Depends(get_current_user), cursor=Depends(get_db_cursor)):
+def update_unit(
+    id: int, 
+    data: KnowledgeUnitUpdate, 
+    user: dict = Depends(get_current_user), 
+    cursor = Depends(get_db_cursor)
+):
+    """
+    Cập nhật Knowledge Unit
+    """
     check_is_admin(user)
-    cursor.execute(
-        "UPDATE edu.knowledge_units SET content=COALESCE(%s, content), knowledge_type=COALESCE(%s, knowledge_type) WHERE knowledge_unit_id=%s RETURNING *",
-        (data.content, data.knowledge_type, id)
-    )
-    res = cursor.fetchone()
-    if not res: raise HTTPException(404, "Không tìm thấy Đơn vị kiến thức")
-    return res
+    
+    query = """
+        UPDATE edu.knowledge_units 
+        SET content = COALESCE(%s, content), 
+            knowledge_type = COALESCE(%s, knowledge_type) 
+        WHERE knowledge_unit_id = %s 
+        RETURNING knowledge_unit_id, content, lesson_id, knowledge_type
+    """
+    try:
+        cursor.execute(query, (data.content, data.knowledge_type, id))
+        updated_unit = cursor.fetchone()
+        
+        if not updated_unit:
+            raise HTTPException(status_code=404, detail="Không tìm thấy Đơn vị kiến thức")
+            
+        return updated_unit
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi cập nhật Unit: {str(e)}")
 
 @router.delete("/knowledge-units/{id}")
-def delete_unit(id: int, user=Depends(get_current_user), cursor=Depends(get_db_cursor)):
+def delete_unit(
+    id: int, 
+    user: dict = Depends(get_current_user), 
+    cursor = Depends(get_db_cursor)
+):
+    """
+    Xóa Knowledge Unit
+    """
     check_is_admin(user)
-    cursor.execute("DELETE FROM edu.knowledge_units WHERE knowledge_unit_id=%s RETURNING knowledge_unit_id", (id,))
-    if not cursor.fetchone(): raise HTTPException(404, "Không tìm thấy Đơn vị kiến thức")
-    return {"message": "Xóa thành công"}
+    
+    query = "DELETE FROM edu.knowledge_units WHERE knowledge_unit_id = %s RETURNING knowledge_unit_id"
+    
+    try:
+        cursor.execute(query, (id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Không tìm thấy Đơn vị kiến thức")
+        return {"message": "Xóa thành công", "id": id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi xóa Unit: {str(e)}")

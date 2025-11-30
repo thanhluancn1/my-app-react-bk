@@ -3,6 +3,7 @@
 from .user import UserCreate, UserResponse
 from .auth import LoginRequest, TokenResponse
 from .school import ClassDTO, ClassCreate, StudentDTO, StudentCreate
+from .schedule import ScheduleCreate, ScheduleDTO
 
 from .knowledge import (
     # CRUD Schemas
